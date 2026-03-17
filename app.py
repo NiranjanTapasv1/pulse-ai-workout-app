@@ -117,31 +117,30 @@ def _load_initial_data(csv_path: str = "workouts.csv") -> None:
 
 @st.cache_data(show_spinner=False)
 def get_all_workouts() -> pd.DataFrame:
-    conn = connect_db()
+    conn = ensure_db_initialized()
     rows = fetch_workouts(conn)
     conn.close()
 
-    # Convert sqlite3.Row objects to a clean DataFrame with proper column names.
     if not rows:
-        return pd.DataFrame()
+        return pd.DataFrame(columns=["date", "exercise"])
 
     df = pd.DataFrame.from_records([dict(r) for r in rows])
-
-    # Normalize column names to handle legacy DB data or variations
     df = df.rename(columns=lambda c: str(c).strip().lower())
 
-    required = ['date', 'exercise']
+    required = ["date", "exercise"]
     missing = [col for col in required if col not in df.columns]
     if missing:
         st.error(f"Workout data missing required columns: {missing}. Please re-import your CSV to fix the database.")
-        return pd.DataFrame()
+        return pd.DataFrame(columns=["date", "exercise"])
 
-    df["date"] = pd.to_datetime(df["date"]).dt.date
+    df["date"] = pd.to_datetime(df["date"], errors="coerce").dt.date
+    df = df.dropna(subset=["date"])
+
     return df
 
 
 def add_workout(date: datetime.date, exercise: str) -> None:
-    conn = connect_db()
+    conn = ensure_db_initialized()
     name = normalize_exercise_name(exercise)
     name = ensure_exercise_in_library(name)
 
@@ -162,6 +161,7 @@ def main() -> None:
         initial_sidebar_state="expanded"
     )
     apply_custom_css()
+    _load_initial_data()
 
     st.title("Pulse")
     st.markdown("*Precision training intelligence built for elite performance*")
@@ -193,6 +193,7 @@ def main() -> None:
                         add_workout(workout_date, ex)
                     st.success(f"✅ Successfully logged {len(selected)} item(s) for {workout_date.isoformat()}")
                     get_all_workouts.clear()
+                    _load_initial_data.clear()
                     st.rerun()
 
         st.markdown("---")
@@ -244,22 +245,18 @@ def main() -> None:
             if df.empty:
                 st.info("📭 No data available for analysis.")
             else:
-                # Workout frequency over time
                 st.subheader("📅 Workout Frequency (Last 30 Days)")
                 freq_df = workout_frequency_over_time(df, days=30)
-                st.line_chart(freq_df.set_index('date')['workouts'])
+                st.line_chart(freq_df.set_index("date")["workouts"])
 
-                # Muscle group trends
                 st.subheader("💪 Muscle Group Trends (Last 4 Weeks)")
                 trends_df = muscle_group_trends(df, get_library(), weeks=4)
                 if not trends_df.empty:
-                    # Melt for better plotting
-                    melted = trends_df.melt(id_vars='week', var_name='muscle_group', value_name='count')
-                    st.bar_chart(melted.pivot(index='week', columns='muscle_group', values='count').fillna(0))
+                    melted = trends_df.melt(id_vars="week", var_name="muscle_group", value_name="count")
+                    st.bar_chart(melted.pivot(index="week", columns="muscle_group", values="count").fillna(0))
                 else:
                     st.write("No trend data available.")
 
-                # Conclusions
                 st.subheader("🔍 AI-Powered Insights & Recommendations")
                 conclusions = generate_conclusions(df, get_library())
                 for conclusion in conclusions:
@@ -281,6 +278,7 @@ def main() -> None:
                             f"✅ Imported {result['inserted']} new rows (skipped {result['skipped']} duplicates)."
                         )
                         get_all_workouts.clear()
+                        _load_initial_data.clear()
                         st.rerun()
                     except ValueError as e:
                         st.error(f"❌ CSV import failed: {e}")
@@ -306,7 +304,7 @@ def main() -> None:
             target = datetime.date.today() + datetime.timedelta(days=1)
             rec = recommend_next_workout(today=target)
 
-            st.metric("Target Date", rec['date'])
+            st.metric("Target Date", rec["date"])
             st.subheader(f"{rec.get('workout_focus', 'Workout Focus')}")
             st.metric("Estimated Duration", f"{rec.get('estimated_duration_min', 0)} min")
             st.write(f"**Type:** {rec.get('workout_type', 'General').title()}")
