@@ -1,10 +1,15 @@
-# AI Pulse Workout App
+AI Pulse Workout App
+
+[![Live App](https://img.shields.io/badge/Try%20it%20Live-Streamlit-FF4B4B?style=for-the-badge&logo=streamlit)](https://pulse-ai-workout-app-j77cuozmhaufezyxhxmkfe.streamlit.app/)
 
 AI Pulse is a simple workout tracking app that helps you log your exercises, view your recent workout history, and get a smart suggestion for what to train next.
+
+**[Try the live app here](https://pulse-ai-workout-app-j77cuozmhaufezyxhxmkfe.streamlit.app/)**
 
 The app is made for people who want an easy way to stay consistent with their fitness routine without using complicated tools. You can record your daily workouts, keep everything organized in one place, and see helpful summaries of your progress over time.
 
 It also looks at your recent workout activity and gives you a practical recommendation for your next workout, so you do not have to guess what to do each day.
+
 
 # Workout Planner (MVP)
 
